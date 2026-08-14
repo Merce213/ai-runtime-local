@@ -1,0 +1,21 @@
+name: devstral-local
+
+provider: llamacpp
+
+endpoint: http://127.0.0.1:8080/v1
+
+model: devstral-local
+
+context_length: 65536
+
+slots: 1
+
+capabilities:
+  tools: true
+  parallel_tool_calls: true
+  reasoning: false
+
+use_cases:
+  - coding
+  - implementation
+  - repository-analysis

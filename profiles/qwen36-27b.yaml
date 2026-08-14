@@ -1,0 +1,22 @@
+name: qwen36-27b-local
+
+provider: llamacpp
+
+endpoint: http://127.0.0.1:8080/v1
+
+model: qwen36-27b-local
+
+context_length: 65536
+
+slots: 1
+
+capabilities:
+  tools: true
+  parallel_tool_calls: true
+  reasoning: true
+
+use_cases:
+  - coding
+  - architecture
+  - code-review
+  - repository-analysis

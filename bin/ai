@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+RUNTIME_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+DOCTOR_SCRIPT="${RUNTIME_DIR}/scripts/doctor.sh"
+RUNTIME_READER="${RUNTIME_DIR}/scripts/runtime.py"
+
+case "${1:-}" in
+    doctor)
+        exec "$DOCTOR_SCRIPT"
+        ;;
+
+    models)
+        exec python3 "$RUNTIME_READER" --profiles
+        ;;
+
+    config)
+        exec python3 "$RUNTIME_READER"
+        ;;
+
+    *)
+        cat <<'EOF'
+Usage:
+  ai doctor
+  ai models
+  ai config
+
+Commands:
+  doctor    Check the local AI development environment
+  models    List configured model profiles
+  config    Show the AIRuntime configuration
+EOF
+        exit 1
+        ;;
+esac
