@@ -38,9 +38,45 @@ def load_profiles() -> dict[str, dict[str, Any]]:
         return profiles
 
     for path in sorted(PROFILES_DIR.glob("*.yaml")):
-        profiles[path.stem] = load_yaml(path)
+        profile = load_yaml(path)
+
+        if not profile.get("model"):
+            continue
+
+        profile["_name"] = path.stem
+        profiles[path.stem] = profile
 
     return profiles
+
+
+def get_active_profile_name(runtime: dict[str, Any]) -> str:
+    active = runtime.get("active_profile")
+
+    if not active:
+        raise KeyError(
+            "runtime.yaml does not define 'active_profile'"
+        )
+
+    return str(active)
+
+
+def get_active_profile(
+    runtime: dict[str, Any],
+    profiles: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    active_name = get_active_profile_name(runtime)
+
+    profile = profiles.get(active_name)
+
+    if profile is None:
+        available = ", ".join(sorted(profiles))
+
+        raise KeyError(
+            f"Active profile '{active_name}' was not found. "
+            f"Available profiles: {available}"
+        )
+
+    return profile
 
 
 def get_value(data: dict[str, Any], key: str) -> Any:
@@ -48,56 +84,129 @@ def get_value(data: dict[str, Any], key: str) -> Any:
 
     for part in key.split("."):
         if not isinstance(value, dict):
-            raise KeyError(f"Invalid configuration path: {key}")
+            raise KeyError(
+                f"Invalid configuration path: {key}"
+            )
 
         if part not in value:
-            raise KeyError(f"Configuration key not found: {key}")
+            raise KeyError(
+                f"Configuration key not found: {key}"
+            )
 
         value = value[part]
 
     return value
 
 
-def print_config(config: dict[str, Any]) -> None:
+def set_active_profile(profile_name: str) -> None:
+    runtime = load_runtime()
+    profiles = load_profiles()
+
+    if profile_name not in profiles:
+        available = ", ".join(sorted(profiles))
+
+        raise ValueError(
+            f"Unknown profile '{profile_name}'. "
+            f"Available profiles: {available}"
+        )
+
+    runtime["active_profile"] = profile_name
+
+    with CONFIG_PATH.open("w", encoding="utf-8") as file:
+        yaml.safe_dump(
+            runtime,
+            file,
+            sort_keys=False,
+            default_flow_style=False,
+        )
+
+
+def print_config(
+    config: dict[str, Any],
+    profiles: dict[str, dict[str, Any]],
+) -> None:
     runtime = config.get("runtime", {})
     llm = config.get("llm", {})
-    primary = llm.get("primary", {})
-    secondary = llm.get("secondary", {})
     projects = config.get("projects", {})
 
+    active_name = get_active_profile_name(config)
+    active = profiles.get(active_name)
+
     print(f"Runtime: {runtime.get('name', 'unknown')}")
-    print(f"Environment: {runtime.get('environment', 'unknown')}")
+    print(
+        f"Environment: "
+        f"{runtime.get('environment', 'unknown')}"
+    )
+    print(f"Active profile: {active_name}")
     print()
 
     print("LLM:")
-    print(f"  Provider: {llm.get('provider', 'unknown')}")
-    print(f"  Endpoint: {llm.get('endpoint', 'unknown')}")
-    print(f"  Primary: {primary.get('model', 'unknown')}")
-    print(f"  Primary context: {primary.get('context_length', 'unknown')}")
-    print(f"  Primary slots: {primary.get('slots', 'unknown')}")
-    print(f"  Secondary: {secondary.get('model', 'unknown')}")
-    print()
+    print(
+        f"  Provider: "
+        f"{llm.get('provider', 'unknown')}"
+    )
+    print(
+        f"  Endpoint: "
+        f"{llm.get('endpoint', 'unknown')}"
+    )
 
+    if active is None:
+        print("  Model: unknown")
+        print("  Context: unknown")
+        print("  Slots: unknown")
+    else:
+        print(
+            f"  Model: "
+            f"{active.get('model', 'unknown')}"
+        )
+        print(
+            f"  Context: "
+            f"{active.get('context_length', 'unknown')}"
+        )
+        print(
+            f"  Slots: "
+            f"{active.get('slots', 'unknown')}"
+        )
+
+    print()
     print("Profiles:")
 
-    for name, profile in load_profiles().items():
+    for name, profile in profiles.items():
         print(f"  {name}:")
-        print(f"    model: {profile.get('model', 'unknown')}")
-        print(f"    provider: {profile.get('provider', 'unknown')}")
-        print(f"    context: {profile.get('context_length', 'unknown')}")
+        print(
+            f"    model: "
+            f"{profile.get('model', 'unknown')}"
+        )
+        print(
+            f"    provider: "
+            f"{profile.get('provider', 'unknown')}"
+        )
+        print(
+            f"    endpoint: "
+            f"{profile.get('endpoint', 'unknown')}"
+        )
+        print(
+            f"    context: "
+            f"{profile.get('context_length', 'unknown')}"
+        )
+        print(
+            f"    slots: "
+            f"{profile.get('slots', 'unknown')}"
+        )
 
-        capabilities = profile.get("capabilities", {})
+        capabilities = profile.get(
+            "capabilities",
+            {},
+        )
 
         print(
             f"    tools: "
             f"{capabilities.get('tools', False)}"
         )
-
         print(
             f"    parallel_tool_calls: "
             f"{capabilities.get('parallel_tool_calls', False)}"
         )
-
         print(
             f"    reasoning: "
             f"{capabilities.get('reasoning', False)}"
@@ -108,38 +217,65 @@ def print_config(config: dict[str, Any]) -> None:
 
     for name, project in projects.items():
         if isinstance(project, dict):
-            print(f"  {name}: {project.get('path', 'unknown')}")
+            print(
+                f"  {name}: "
+                f"{project.get('path', 'unknown')}"
+            )
 
 
-def print_profiles() -> None:
-    profiles = load_profiles()
-
+def print_profiles(
+    profiles: dict[str, dict[str, Any]],
+) -> None:
     if not profiles:
         print("No model profiles found.")
         return
 
     for name, profile in profiles.items():
         print(f"Profile: {name}")
-        print(f"  Model: {profile.get('model', 'unknown')}")
-        print(f"  Provider: {profile.get('provider', 'unknown')}")
-        print(f"  Endpoint: {profile.get('endpoint', 'unknown')}")
-        print(f"  Context: {profile.get('context_length', 'unknown')}")
-        print(f"  Slots: {profile.get('slots', 'unknown')}")
-
-        capabilities = profile.get("capabilities", {})
-
-        print(f"  Tools: {capabilities.get('tools', False)}")
         print(
-            "  Parallel tool calls: "
+            f"  Model: "
+            f"{profile.get('model', 'unknown')}"
+        )
+        print(
+            f"  Provider: "
+            f"{profile.get('provider', 'unknown')}"
+        )
+        print(
+            f"  Endpoint: "
+            f"{profile.get('endpoint', 'unknown')}"
+        )
+        print(
+            f"  Context: "
+            f"{profile.get('context_length', 'unknown')}"
+        )
+        print(
+            f"  Slots: "
+            f"{profile.get('slots', 'unknown')}"
+        )
+
+        capabilities = profile.get(
+            "capabilities",
+            {},
+        )
+
+        print(
+            f"  Tools: "
+            f"{capabilities.get('tools', False)}"
+        )
+        print(
+            f"  Parallel tool calls: "
             f"{capabilities.get('parallel_tool_calls', False)}"
         )
-        print(f"  Reasoning: {capabilities.get('reasoning', False)}")
+        print(
+            f"  Reasoning: "
+            f"{capabilities.get('reasoning', False)}"
+        )
         print()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Read AIRuntime configuration"
+        description="Read and manage AIRuntime configuration"
     )
 
     parser.add_argument(
@@ -154,26 +290,52 @@ def main() -> int:
         help="List configured model profiles",
     )
 
+    parser.add_argument(
+        "--set-active",
+        dest="set_active",
+        help="Set the active model profile",
+    )
+
     args = parser.parse_args()
 
     try:
         runtime = load_runtime()
+        profiles = load_profiles()
+
+        if args.set_active:
+            set_active_profile(args.set_active)
+
+            print(
+                f"Active profile: "
+                f"{args.set_active}"
+            )
+            print(
+                "Server unchanged. "
+                "Run 'ai up' to apply the profile."
+            )
+
+            return 0
 
         if args.key:
             value = get_value(runtime, args.key)
 
             if isinstance(value, (dict, list)):
-                print(yaml.safe_dump(value, sort_keys=False).rstrip())
+                print(
+                    yaml.safe_dump(
+                        value,
+                        sort_keys=False,
+                    ).rstrip()
+                )
             else:
                 print(value)
 
             return 0
 
         if args.profiles:
-            print_profiles()
+            print_profiles(profiles)
             return 0
 
-        print_config(runtime)
+        print_config(runtime, profiles)
         return 0
 
     except Exception as exc:

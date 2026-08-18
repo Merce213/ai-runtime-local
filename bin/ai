@@ -6,8 +6,13 @@ RUNTIME_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 DOCTOR_SCRIPT="${RUNTIME_DIR}/scripts/doctor.sh"
 RUNTIME_READER="${RUNTIME_DIR}/scripts/runtime.py"
+SERVER_CONTROLLER="${RUNTIME_DIR}/scripts/serverctl.py"
+STATUS_SCRIPT="${RUNTIME_DIR}/scripts/status.py"
+SYNC_SCRIPT="${RUNTIME_DIR}/scripts/sync.py"
+
 
 case "${1:-}" in
+
     doctor)
         exec "$DOCTOR_SCRIPT"
         ;;
@@ -20,18 +25,76 @@ case "${1:-}" in
         exec python3 "$RUNTIME_READER"
         ;;
 
+    status)
+        exec python3 "$STATUS_SCRIPT"
+        ;;
+
+    sync)
+        shift || true
+        exec python3 "$SYNC_SCRIPT" "$@"
+        ;;
+
+    use)
+        if [[ -z "${2:-}" ]]; then
+            echo "Usage: ai use <profile>"
+            exit 1
+        fi
+
+        exec python3 "$RUNTIME_READER" \
+            --set-active "$2"
+        ;;
+
+    up)
+        python3 "$SERVER_CONTROLLER" up
+        "$DOCTOR_SCRIPT"
+        ;;
+
+    down)
+        exec python3 "$SERVER_CONTROLLER" down
+        ;;
+
+    server)
+        shift || true
+
+        exec python3 "$SERVER_CONTROLLER" "$@"
+        ;;
+
     *)
         cat <<'EOF'
 Usage:
+  ai up
+  ai down
+  ai status
   ai doctor
   ai models
   ai config
+  ai sync
+  ai sync --apply
+  ai use <profile>
+
+  ai server status [--profile PROFILE]
+  ai server start [--profile PROFILE]
+  ai server stop [--profile PROFILE]
+  ai server up
+  ai server down
 
 Commands:
-  doctor    Check the local AI development environment
-  models    List configured model profiles
-  config    Show the AIRuntime configuration
+  up             Start the active AI backend and validate the runtime
+  down           Stop the AIRuntime-managed AI backend
+  status         Show the current runtime status
+  doctor         Validate the local AI development environment
+  models         List configured model profiles
+  config         Show AIRuntime configuration
+  sync           Check Hermes/OpenCode synchronization
+  use            Select the active model profile
+
+  server status  Show llama-server status
+  server start   Start a specific profile
+  server stop    Stop a specific profile
+  server up      Start the active profile
+  server down    Stop the AIRuntime-managed server
 EOF
         exit 1
         ;;
+
 esac

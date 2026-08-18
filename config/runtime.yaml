@@ -1,22 +1,16 @@
 version: 1
 
+active_profile: qwen38-27b
+
 runtime:
-  name: local-dev
-  environment: wsl2
+    name: local-dev
+    environment: wsl2
 
 llm:
-  provider: llamacpp
-  endpoint: http://127.0.0.1:8080/v1
-
-  primary:
-    model: qwen36-27b-local
-    context_length: 65536
-    slots: 1
-
-  secondary:
-    model: devstral-local
+    provider: llamacpp
+    endpoint: http://127.0.0.1:8080/v1
 
 projects:
-  kineflow:
-    path: /home/nassim/dev/projects/kineflow
-    instructions: /home/nassim/dev/projects/kineflow/AGENTS.md
+    kineflow:
+        path: /home/nassim/dev/projects/kineflow
+        instructions: /home/nassim/dev/projects/kineflow/AGENTS.md

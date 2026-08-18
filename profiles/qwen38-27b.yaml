@@ -1,10 +1,10 @@
-name: qwen36-27b-local
+name: qwen38-27b-local
 
 provider: llamacpp
 
 endpoint: http://127.0.0.1:8080/v1
 
-model: qwen36-27b-local
+model: qwen38-27b-local
 
 context_length: 65536
 
@@ -28,9 +28,9 @@ server:
 
     working_directory: C:\Users\nassi\AI\llamacpp
 
-    model_path: C:\Users\nassi\AI\models\qwen\Qwen3.6-27B-UD-IQ3_XXS.gguf
+    model_path: C:\Users\nassi\AI\models\qwen\Qwen3.8-27B-UD-IQ3_XXS.gguf
 
-    alias: qwen36-27b-local
+    alias: qwen38-27b-local
 
     port: 8080
 
@@ -78,7 +78,7 @@ server:
         - "1.0"
 
         - --presence-penalty
-        - "0.0"
+        - "1.5"
 
         - --min-p
         - "0.00"
